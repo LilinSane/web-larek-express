@@ -1,8 +1,9 @@
 import ApiError from './api-error';
+import HttpStatus from './http-status';
 
 export default class NotFoundError extends ApiError {
   constructor(message: string) {
-    super(404, message);
+    super(HttpStatus.NOT_FOUND, message);
     this.name = 'NotFoundError';
   }
 }

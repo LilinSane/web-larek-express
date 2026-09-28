@@ -1,8 +1,6 @@
 import cors from 'cors';
 import express from 'express';
 import mongoose from 'mongoose';
-import path from 'path';
-import { errors as celebrateErrors } from 'celebrate';
 import cookieParser from 'cookie-parser';
 import config from './config';
 import NotFoundError from './errors/not-found-error';
@@ -21,7 +19,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(cookieParser());
-app.use(express.static(path.join(process.cwd(), 'src', config.publicPath)));
+app.use(express.static(config.publicDirectory));
 
 app.use(routes);
 app.use((req, _res, next) => {
@@ -29,7 +27,6 @@ app.use((req, _res, next) => {
 });
 app.use(logger.errorLogger);
 app.use(validationErrorHandler);
-app.use(celebrateErrors());
 app.use(errorHandler);
 
 mongoose.connect(config.databaseUrl)

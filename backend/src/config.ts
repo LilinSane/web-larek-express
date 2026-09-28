@@ -1,23 +1,33 @@
 import dotenv from 'dotenv';
 import ms from 'ms';
 import cron from 'node-cron';
+import path from 'path';
 
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
 const databaseUrl = process.env.DB_ADDRESS;
-const jwtSecret = process.env.JWT_SECRET;
+const jwtAccessSecret = process.env.JWT_ACCESS_SECRET;
+const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET;
 const uploadMaxSize = Number(process.env.UPLOAD_MAX_SIZE || 5 * 1024 * 1024);
 const uploadTempMaxAge = ms(
   (process.env.UPLOAD_TEMP_MAX_AGE || '24h') as ms.StringValue,
 );
 const uploadCleanupCron = process.env.UPLOAD_CLEANUP_CRON || '0 * * * *';
+const uploadPath = process.env.UPLOAD_PATH || 'images';
+const uploadPathTemp = process.env.UPLOAD_PATH_TEMP || 'temp';
+const publicPath = process.env.PUBLIC_PATH || 'public';
+const sourceDirectory = path.resolve(__dirname, '..', 'src');
 
 if (!databaseUrl) {
   throw new Error('DB_ADDRESS must be configured in the environment');
 }
 
-if (!jwtSecret) {
-  throw new Error('JWT_SECRET must be configured in the environment');
+if (!jwtAccessSecret) {
+  throw new Error('JWT_ACCESS_SECRET must be configured in the environment');
+}
+
+if (!jwtRefreshSecret) {
+  throw new Error('JWT_REFRESH_SECRET must be configured in the environment');
 }
 
 if (!Number.isSafeInteger(uploadMaxSize) || uploadMaxSize <= 0) {
@@ -35,13 +45,17 @@ if (!cron.validate(uploadCleanupCron)) {
 const config = {
   port: Number(process.env.PORT || 3000),
   databaseUrl,
-  jwtSecret,
+  jwtAccessSecret,
+  jwtRefreshSecret,
   originAllow: process.env.ORIGIN_ALLOW || 'http://localhost:5173',
   accessTokenExpiry: process.env.AUTH_ACCESS_TOKEN_EXPIRY || '10m',
   refreshTokenExpiry: process.env.AUTH_REFRESH_TOKEN_EXPIRY || '7d',
-  uploadPath: process.env.UPLOAD_PATH || 'images',
-  uploadPathTemp: process.env.UPLOAD_PATH_TEMP || 'temp',
-  publicPath: process.env.PUBLIC_PATH || 'public',
+  uploadPath,
+  uploadPathTemp,
+  publicPath,
+  publicDirectory: path.resolve(sourceDirectory, publicPath),
+  temporaryDirectory: path.resolve(sourceDirectory, uploadPathTemp),
+  imagesDirectory: path.resolve(sourceDirectory, publicPath, uploadPath),
   uploadMaxSize,
   uploadTempMaxAge,
   uploadCleanupCron,

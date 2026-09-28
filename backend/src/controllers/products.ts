@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import NotFoundError from '../errors/not-found-error';
+import HttpStatus from '../errors/http-status';
 import Product from '../models/product';
 import { deleteImageFile, moveTemporaryImage } from '../utils/product-image';
 
@@ -28,7 +29,7 @@ const createProduct = async (req: Request, res: Response, next: NextFunction) =>
       image: { ...req.body.image, fileName: movedImage },
     });
     productWasCreated = true;
-    res.status(200).json(product);
+    res.status(HttpStatus.CREATED).json(product);
   } catch (error) {
     if (!productWasCreated) {
       try {

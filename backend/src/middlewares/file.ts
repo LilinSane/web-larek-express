@@ -1,15 +1,10 @@
 import { mkdirSync } from 'fs';
 import multer from 'multer';
-import path from 'path';
 import { randomUUID } from 'crypto';
 import BadRequestError from '../errors/bad-request-error';
 import config from '../config';
 
-const temporaryDirectory = path.join(
-  process.cwd(),
-  'src',
-  config.uploadPathTemp,
-);
+const { temporaryDirectory } = config;
 const allowedTypes: Record<string, string> = {
   'image/jpg': '.jpg',
   'image/jpeg': '.jpg',

@@ -7,8 +7,8 @@ const authRouter = Router();
 
 authRouter.post('/login', validators.loginValidator, authController.login);
 authRouter.post('/register', validators.registerValidator, authController.register);
-authRouter.get('/token', authController.refreshAccessToken);
-authRouter.get('/logout', authController.logout);
+authRouter.get('/token', validators.refreshTokenValidator, authController.refreshAccessToken);
+authRouter.get('/logout', validators.refreshTokenValidator, authController.logout);
 authRouter.get('/user', auth, authController.getCurrentUser);
 
 export default authRouter;

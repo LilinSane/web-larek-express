@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import { randomUUID } from 'crypto';
 import {
   CookieOptions,
   NextFunction,
@@ -11,7 +12,7 @@ import config from '../config';
 import NotFoundError from '../errors/not-found-error';
 import UnauthorizedError from '../errors/unauthorized-error';
 import User, { IUser } from '../models/user';
-import { isAuthenticatedRequest, verifyRefreshToken } from '../middlewares/auth';
+import { verifyRefreshToken } from '../middlewares/auth';
 
 interface IAuthRequest extends Request {
   body: {
@@ -35,6 +36,13 @@ const cookieOptions: CookieOptions = {
   path: '/',
 };
 
+const clearCookieOptions: CookieOptions = {
+  httpOnly: cookieOptions.httpOnly,
+  sameSite: cookieOptions.sameSite,
+  secure: cookieOptions.secure,
+  path: cookieOptions.path,
+};
+
 const expiresInSeconds = (duration: string) => {
   const durationMs = ms(duration as ms.StringValue);
   if (!Number.isFinite(durationMs) || durationMs <= 0) {
@@ -43,21 +51,15 @@ const expiresInSeconds = (duration: string) => {
   return Math.floor(durationMs / 1000);
 };
 
-let lastTokenIssuedAt = 0;
-
-const createToken = (userId: string, duration: string) => {
-  const issuedAt = Math.max(Math.floor(Date.now() / 1000), lastTokenIssuedAt + 1);
-  lastTokenIssuedAt = issuedAt;
-  return jwt.sign(
-    { _id: userId, iat: issuedAt },
-    config.jwtSecret,
-    { expiresIn: expiresInSeconds(duration) },
-  );
-};
+const createToken = (userId: string, duration: string, secret: string) => jwt.sign(
+  { _id: userId, jti: randomUUID(), iat: Math.floor(Date.now() / 1000) },
+  secret,
+  { expiresIn: expiresInSeconds(duration) },
+);
 
 const createTokenPair = (userId: string) => ({
-  accessToken: createToken(userId, config.accessTokenExpiry),
-  refreshToken: createToken(userId, config.refreshTokenExpiry),
+  accessToken: createToken(userId, config.accessTokenExpiry, config.jwtAccessSecret),
+  refreshToken: createToken(userId, config.refreshTokenExpiry, config.jwtRefreshSecret),
 });
 
 const serializeUser = (user: IUser) => ({
@@ -114,11 +116,7 @@ const getCurrentUser = async (
   next: NextFunction,
 ) => {
   try {
-    if (!isAuthenticatedRequest(req)) {
-      throw new UnauthorizedError();
-    }
-
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(req.user!._id);
     if (!user) {
       throw new NotFoundError('Пользователь по заданному id отсутствует в базе');
     }
@@ -130,15 +128,11 @@ const getCurrentUser = async (
 
 const refreshAccessToken = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const refreshToken = req.cookies[cookieName] as string | undefined;
-    if (!refreshToken) {
-      throw new UnauthorizedError('Не валидный токен');
-    }
-
+    const refreshToken = req.cookies[cookieName] as string;
     const payload = verifyRefreshToken(refreshToken);
     const user = await User.findById(payload._id).select('+tokens');
     if (!user) {
-      throw new NotFoundError('Пользователь по заданному id отсутствует в базе');
+      throw new UnauthorizedError('Не валидный токен');
     }
     if (!user.tokens.some((token) => token.token === refreshToken)) {
       throw new UnauthorizedError('Не валидный токен');
@@ -156,15 +150,11 @@ const refreshAccessToken = async (req: Request, res: Response, next: NextFunctio
 
 const logout = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const refreshToken = req.cookies[cookieName] as string | undefined;
-    if (!refreshToken) {
-      throw new UnauthorizedError('Не валидный токен');
-    }
-
+    const refreshToken = req.cookies[cookieName] as string;
     const payload = verifyRefreshToken(refreshToken);
     const user = await User.findById(payload._id).select('+tokens');
     if (!user) {
-      throw new NotFoundError('Пользователь по заданному id отсутствует в базе');
+      throw new UnauthorizedError('Не валидный токен');
     }
     if (!user.tokens.some((token) => token.token === refreshToken)) {
       throw new UnauthorizedError('Не валидный токен');
@@ -172,7 +162,7 @@ const logout = async (req: Request, res: Response, next: NextFunction) => {
 
     user.tokens = user.tokens.filter((token) => token.token !== refreshToken);
     await user.save();
-    res.clearCookie(cookieName, cookieOptions);
+    res.clearCookie(cookieName, clearCookieOptions);
     res.json({ success: true });
   } catch (error) {
     next(error);

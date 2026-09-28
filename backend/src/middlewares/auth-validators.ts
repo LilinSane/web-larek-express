@@ -10,9 +10,15 @@ const loginValidator = celebrate({
 const registerValidator = celebrate({
   body: Joi.object({
     name: Joi.string().min(2).max(30),
-    email: Joi.string().email().lowercase().allow(''),
+    email: Joi.string().email().lowercase().required(),
     password: Joi.string().min(6).required(),
   }).required().unknown(false),
 });
 
-export default { loginValidator, registerValidator };
+const refreshTokenValidator = celebrate({
+  cookies: Joi.object({
+    refreshToken: Joi.string().required(),
+  }).required().unknown(true),
+});
+
+export default { loginValidator, registerValidator, refreshTokenValidator };

@@ -4,25 +4,13 @@ import { Types } from 'mongoose';
 import config from '../config';
 import UnauthorizedError from '../errors/unauthorized-error';
 
-export interface IAuthenticatedRequest extends Request {
-  user: JwtPayload & { _id: string };
-}
-
-export const isAuthenticatedRequest = (
-  req: Request,
-): req is IAuthenticatedRequest => {
-  if (!('user' in req)) {
-    return false;
+declare global {
+  namespace Express {
+    interface Request {
+      user?: JwtPayload & { _id: string };
+    }
   }
-
-  const { user } = req;
-  return (
-    typeof user === 'object'
-    && user !== null
-    && '_id' in user
-    && typeof user._id === 'string'
-  );
-};
+}
 
 const auth = (req: Request, _res: Response, next: NextFunction) => {
   const authorization = req.get('authorization');
@@ -36,7 +24,7 @@ const auth = (req: Request, _res: Response, next: NextFunction) => {
   }
 
   try {
-    const payload = jwt.verify(accessToken, config.jwtSecret);
+    const payload = jwt.verify(accessToken, config.jwtAccessSecret);
     if (
       typeof payload === 'string'
       || typeof payload._id !== 'string'
@@ -56,7 +44,7 @@ const auth = (req: Request, _res: Response, next: NextFunction) => {
 
 export const verifyRefreshToken = (token: string): JwtPayload & { _id: string } => {
   try {
-    const payload = jwt.verify(token, config.jwtSecret);
+    const payload = jwt.verify(token, config.jwtRefreshSecret);
     if (
       typeof payload === 'string'
       || typeof payload._id !== 'string'

@@ -27,21 +27,10 @@ const isUploadedImage = (imageName: string) => (
 
 export const moveTemporaryImage = async (fileName: string) => {
   const imageName = getImageName(fileName);
-  const temporaryPath = path.join(
-    process.cwd(),
-    'src',
-    config.uploadPathTemp,
-    imageName,
-  );
-  const publicDirectory = path.join(
-    process.cwd(),
-    'src',
-    config.publicPath,
-  );
-  const imagesDirectory = path.join(publicDirectory, config.uploadPath);
-  const destinationPath = path.join(imagesDirectory, imageName);
+  const temporaryPath = path.join(config.temporaryDirectory, imageName);
+  const destinationPath = path.join(config.imagesDirectory, imageName);
 
-  await fs.mkdir(imagesDirectory, { recursive: true });
+  await fs.mkdir(config.imagesDirectory, { recursive: true });
   try {
     await fs.copyFile(temporaryPath, destinationPath);
     await fs.unlink(temporaryPath);
@@ -70,13 +59,7 @@ export const deleteImageFile = async (fileName: string) => {
     return;
   }
 
-  const imagePath = path.join(
-    process.cwd(),
-    'src',
-    config.publicPath,
-    config.uploadPath,
-    imageName,
-  );
+  const imagePath = path.join(config.imagesDirectory, imageName);
   try {
     await fs.unlink(imagePath);
   } catch (error) {

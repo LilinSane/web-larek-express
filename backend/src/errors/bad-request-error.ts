@@ -1,8 +1,9 @@
 import ApiError from './api-error';
+import HttpStatus from './http-status';
 
 export default class BadRequestError extends ApiError {
   constructor(message: string) {
-    super(400, message);
+    super(HttpStatus.BAD_REQUEST, message);
     this.name = 'BadRequestError';
   }
 }

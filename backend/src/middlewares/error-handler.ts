@@ -4,8 +4,9 @@ import multer from 'multer';
 import ApiError from '../errors/api-error';
 import BadRequestError from '../errors/bad-request-error';
 import ConflictError from '../errors/conflict-error';
+import HttpStatus from '../errors/http-status';
 
-const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
+const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
   let handledError = error;
 
   if (error instanceof Error && 'code' in error && error.code === 11000) {
@@ -19,12 +20,12 @@ const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
       ? 'title' in duplicateError.keyPattern
       : /\btitle_1\b/.test(error.message);
 
-    if (duplicateEmail && req.path.endsWith('/register')) {
+    if (duplicateEmail) {
       handledError = new ConflictError('Пользователь с таким email уже существует');
-    } else if (duplicateTitle && req.method === 'PATCH') {
+    } else if (duplicateTitle) {
       handledError = new ConflictError('Товар с таким заголовком уже существует');
     } else {
-      handledError = new ConflictError(error.message);
+      handledError = new ConflictError('Конфликт уникальности данных');
     }
   } else if (error instanceof MongooseError.ValidationError) {
     handledError = new BadRequestError(error.message);
@@ -32,7 +33,10 @@ const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
     handledError = new BadRequestError(error.message);
   } else if (error instanceof SyntaxError) {
     const requestError = error as SyntaxError & { status?: number; statusCode?: number };
-    if (requestError.status === 400 || requestError.statusCode === 400) {
+    if (
+      requestError.status === HttpStatus.BAD_REQUEST
+      || requestError.statusCode === HttpStatus.BAD_REQUEST
+    ) {
       handledError = new BadRequestError('Некорректный JSON');
     }
   }
@@ -42,7 +46,7 @@ const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
     return;
   }
 
-  res.status(500).json({ message: 'Внутренняя ошибка сервера' });
+  res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: 'Внутренняя ошибка сервера' });
 };
 
 export default errorHandler;
